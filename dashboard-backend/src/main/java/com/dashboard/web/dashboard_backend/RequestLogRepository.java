@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
+import java.util.Date;
 import java.util.List;
 
 public interface RequestLogRepository extends MongoRepository<RequestLog, String> {
@@ -13,7 +14,7 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
     // ── Paginated log queries ────────────────────────────────────────────
 
     @Query(value = "{}", sort = "{ 'parsed_at' : -1 }")
-    Page<RequestLog> findAllByOrderByParsed_atDesc(Pageable pageable);
+    Page<RequestLog> findAllByOrderByParsedAtDesc(Pageable pageable);
 
     @Query("{'status': {$gte: ?0, $lt: ?1}}")
     Page<RequestLog> findByStatusRange(int minStatus, int maxStatus, Pageable pageable);
@@ -58,6 +59,11 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
             default    -> findByMethod(method, pageable);
         };
     }
+
+    // ── Delete by date range ─────────────────────────────────────────────
+    // Deletes all docs where parsed_at >= cutoff (i.e. "within last N days")
+    @Query(value = "{ 'parsed_at': { $gte: ?0 } }", delete = true)
+    long deleteByParsedAtAfter(Date cutoff);
 
     // ── Stats aggregation ────────────────────────────────────────────────
 

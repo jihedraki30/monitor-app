@@ -5,9 +5,13 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/audit")
@@ -76,7 +80,7 @@ public class AuditController {
         } else if (hasStatus) {
             result = repository.findByStatusGroup(status, pageable);
         } else {
-            result = repository.findAllByOrderByParsed_atDesc(pageable);
+            result = repository.findAllByOrderByParsedAtDesc(pageable);
         }
 
         return new PagedResponse<>(result);
@@ -124,5 +128,33 @@ public class AuditController {
             return repository.getHourlyTimelineByApp(hours, appFilter);
         }
         return repository.getHourlyTimeline(hours);
+    }
+
+    // ── Delete history ───────────────────────────────────────────────────
+    // range values: "last_day" | "last_week" | "last_month" | "all"
+    @DeleteMapping("/history")
+    public ResponseEntity<Map<String, Object>> deleteHistory(
+            @RequestParam(defaultValue = "all") String range) {
+
+        long deleted;
+
+        if ("all".equals(range)) {
+            long count = repository.count();
+            repository.deleteAll();
+            deleted = count;
+        } else {
+            Instant cutoff = switch (range) {
+                case "last_day"   -> Instant.now().minus(1,  ChronoUnit.DAYS);
+                case "last_week"  -> Instant.now().minus(7,  ChronoUnit.DAYS);
+                case "last_month" -> Instant.now().minus(30, ChronoUnit.DAYS);
+                default -> throw new IllegalArgumentException("Unknown range: " + range);
+            };
+            deleted = repository.deleteByParsedAtAfter(java.util.Date.from(cutoff));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "deleted", deleted,
+                "range",   range
+        ));
     }
 }

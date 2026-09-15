@@ -89,7 +89,7 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
         "{ $match:   { app: { $ne: null, $exists: true } } }",
         "{ $group:   { _id: '$app' } }",
         "{ $sort:    { _id: 1 } }",
-        "{ $project: { _id: 1 } }"
+        "{ $project: { _id: 0, app: '$_id' } }"
     })
     List<String> findDistinctApps();
 

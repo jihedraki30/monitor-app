@@ -38,7 +38,6 @@ public class AuditController {
 
     // ── Distinct apps ────────────────────────────────────────────────────
     @GetMapping("/apps")
-    @Cacheable("apps")
     public List<String> getApps() {
         return repository.findDistinctApps();
     }

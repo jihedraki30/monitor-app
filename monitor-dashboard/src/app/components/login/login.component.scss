@@ -1,0 +1,224 @@
+// src/app/components/login/login.component.scss
+
+// ── Tokens (mirrors dashboard theme) ─────────────────────────
+$bg:          #0f1117;
+$surface:     #181c25;
+$border:      #2a2f3d;
+$accent:      #378ADD;
+$accent-dim:  rgba(55, 138, 221, 0.15);
+$text:        #d4d3ce;
+$text-muted:  #888780;
+$danger:      #E24B4A;
+$ok:          #639922;
+$radius:      10px;
+
+// ── Page layout ───────────────────────────────────────────────
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $bg;
+  position: relative;
+  overflow: hidden;
+}
+
+// Subtle grid overlay
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(55,138,221,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55,138,221,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+// ── Card ──────────────────────────────────────────────────────
+.login-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius * 1.5;
+  padding: 2.5rem 2.25rem;
+  box-shadow:
+    0 0 0 1px rgba(55,138,221,.08),
+    0 24px 64px rgba(0,0,0,.5);
+
+  animation: fadeUp .35s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+// ── Brand ─────────────────────────────────────────────────────
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin-bottom: 1.75rem;
+
+  .brand-icon {
+    font-size: 1.5rem;
+    color: $accent;
+    line-height: 1;
+  }
+
+  .brand-name {
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: $text-muted;
+  }
+}
+
+.login-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: $text;
+  margin: 0 0 .35rem;
+  line-height: 1.2;
+}
+
+.login-sub {
+  font-size: .875rem;
+  color: $text-muted;
+  margin: 0 0 1.75rem;
+}
+
+// ── Form ──────────────────────────────────────────────────────
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.field-label {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: $text-muted;
+}
+
+.field-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,.03);
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: .65rem .85rem;
+  font-size: .95rem;
+  color: $text;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+
+  &::placeholder { color: #555; }
+
+  &:focus {
+    border-color: $accent;
+    box-shadow: 0 0 0 3px $accent-dim;
+  }
+
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+// Password toggle wrapper
+.input-wrap {
+  position: relative;
+
+  .field-input { padding-right: 2.6rem; }
+}
+
+.toggle-pass {
+  position: absolute;
+  right: .65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: .2rem;
+  line-height: 1;
+  opacity: .6;
+  transition: opacity .15s;
+
+  &:hover { opacity: 1; }
+}
+
+// ── Error banner ──────────────────────────────────────────────
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(226, 75, 74, .12);
+  border: 1px solid rgba(226, 75, 74, .3);
+  border-radius: $radius;
+  padding: .6rem .85rem;
+  font-size: .875rem;
+  color: $danger;
+
+  .err-icon { font-size: 1rem; flex-shrink: 0; }
+}
+
+// ── Submit button ─────────────────────────────────────────────
+.btn-login {
+  margin-top: .5rem;
+  width: 100%;
+  padding: .75rem;
+  background: $accent;
+  border: none;
+  border-radius: $radius;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s, transform .1s, box-shadow .18s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background: lighten($accent, 8%);
+    box-shadow: 0 4px 16px rgba(55,138,221,.35);
+  }
+  &:active:not(:disabled) { transform: scale(.98); }
+  &:disabled { opacity: .6; cursor: not-allowed; }
+}
+
+// ── Loading dots (reused from dashboard) ─────────────────────
+.loading-dots {
+  display: inline-flex;
+  gap: 5px;
+
+  span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff;
+    animation: dot-bounce .8s ease infinite;
+
+    &:nth-child(2) { animation-delay: .15s; }
+    &:nth-child(3) { animation-delay: .30s; }
+  }
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(1);   opacity: .6; }
+  40%            { transform: scale(1.5); opacity: 1;  }
+}

@@ -1,0 +1,69 @@
+<!-- src/app/components/login/login.component.html -->
+<div class="login-page">
+
+  <div class="login-panel">
+
+    <div class="login-brand">
+      <span class="brand-icon">⬡</span>
+      <span class="brand-name">Audit Dashboard</span>
+    </div>
+
+    <h1 class="login-title">Admin Access</h1>
+    <p class="login-sub">Sign in to access the monitoring dashboard.</p>
+
+    <form class="login-form" (ngSubmit)="submit()" #f="ngForm" novalidate>
+
+      <div class="field-group">
+        <label class="field-label" for="username">Username</label>
+        <input
+          id="username"
+          class="field-input"
+          type="text"
+          [(ngModel)]="username"
+          name="username"
+          autocomplete="username"
+          placeholder="admin"
+          [disabled]="loading"
+          required />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="password">Password</label>
+        <div class="input-wrap">
+          <input
+            id="password"
+            class="field-input"
+            [type]="showPass ? 'text' : 'password'"
+            [(ngModel)]="password"
+            name="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            [disabled]="loading"
+            required />
+          <button type="button" class="toggle-pass"
+                  (click)="showPass = !showPass"
+                  [attr.aria-label]="showPass ? 'Hide password' : 'Show password'">
+            {{ showPass ? '🙈' : '👁' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="error-banner" *ngIf="errorMsg" role="alert">
+        <span class="err-icon">⚠</span> {{ errorMsg }}
+      </div>
+
+      <button class="btn-login" type="submit" [disabled]="loading">
+        <span *ngIf="!loading">Sign in</span>
+        <span *ngIf="loading" class="loading-dots">
+          <span></span><span></span><span></span>
+        </span>
+      </button>
+
+    </form>
+
+  </div>
+
+  <!-- decorative grid backdrop -->
+  <div class="grid-bg" aria-hidden="true"></div>
+
+</div>

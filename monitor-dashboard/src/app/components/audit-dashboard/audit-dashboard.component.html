@@ -1,0 +1,326 @@
+<!-- src/app/components/audit-dashboard/audit-dashboard.component.html -->
+<div class="dashboard">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="dash-header">
+    <div class="header-left">
+      <div class="header-title-row">
+        <span class="header-dot" [class.dot-live]="!loading" [class.dot-loading]="loading"></span>
+        <h1 class="page-title">Audit Dashboard</h1>
+      </div>
+      <p class="last-updated" *ngIf="lastUpdated">
+        Updated {{ lastUpdatedLabel }} &nbsp;·&nbsp; auto-refresh every 30s
+      </p>
+    </div>
+
+    <div class="header-controls">
+
+      <div class="control-group">
+        <label class="control-label">Range</label>
+        <div class="btn-group">
+          <button *ngFor="let r of ['1h','6h','24h','7d']"
+                  class="btn-range"
+                  [class.active]="timeRange === r"
+                  (click)="timeRange = r; onTimeRangeChange()">{{ r }}</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">App</label>
+        <select class="ctrl-select" [(ngModel)]="filterApp" (change)="applyFilters()">
+          <option value="">All apps</option>
+          <option *ngFor="let app of availableApps" [value]="app">{{ appLabel(app) }}</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Method</label>
+        <select class="ctrl-select" [(ngModel)]="filterMethod" (change)="applyFilters()">
+          <option value="">All methods</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Status</label>
+        <select class="ctrl-select" [(ngModel)]="filterStatus" (change)="applyFilters()">
+          <option value="">All</option>
+          <option value="2xx">2xx</option>
+          <option value="4xx">4xx</option>
+          <option value="5xx">5xx</option>
+        </select>
+      </div>
+
+      <button class="btn-refresh" (click)="load()" [disabled]="loading" title="Refresh now">
+        <span class="refresh-icon" [class.spin]="loading">↻</span>
+      </button>
+
+      <div class="user-section">
+        <span class="username">👤 {{ username }}</span>
+        <button class="btn-change-pwd" (click)="goToChangePassword()" title="Change password">
+          🔑 Password
+        </button>
+        <button class="btn-delete-history" (click)="openDeleteModal()" title="Delete request history">
+          🗑 History
+        </button>
+        <button class="btn-logout" (click)="logout()" title="Logout">
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── KPI Strip ───────────────────────────────────────────── -->
+  <section class="kpi-strip" aria-label="Key metrics">
+    <div class="kpi-card">
+      <span class="kpi-icon kpi-icon-total">⬡</span>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ stats.total | number }}</div>
+        <div class="kpi-label">Total requests</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon kpi-icon-jwt">◈</span>
+      <div class="kpi-body">
+        <div class="kpi-value kpi-ok">{{ stats.withJwt | number }}</div>
+        <div class="kpi-label">JWT &nbsp;<span class="kpi-pct">{{ jwtPct }}%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon kpi-icon-anon">◎</span>
+      <div class="kpi-body">
+        <div class="kpi-value kpi-warn">{{ stats.anonymous | number }}</div>
+        <div class="kpi-label">Anonymous</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" [class.kpi-icon-danger]="errPct > 10" [class.kpi-icon-warn]="errPct <= 10">◬</span>
+      <div class="kpi-body">
+        <div class="kpi-value" [class.kpi-danger]="errPct > 10" [class.kpi-warn]="errPct <= 10">
+          {{ stats.errors | number }}
+        </div>
+        <div class="kpi-label">Errors &nbsp;<span class="kpi-pct">{{ errPct }}%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon kpi-icon-users">◉</span>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ stats.uniqueUsers }}</div>
+        <div class="kpi-label">Unique users</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" [class.kpi-icon-warn]="stats.avgResponseMs > 500" [class.kpi-icon-ok]="stats.avgResponseMs <= 500">◷</span>
+      <div class="kpi-body">
+        <div class="kpi-value" [class.kpi-warn]="stats.avgResponseMs > 500" [class.kpi-ok]="stats.avgResponseMs <= 500">
+          {{ stats.avgResponseMs }}ms
+        </div>
+        <div class="kpi-label">Avg response</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Timeline (full width) ──────────────────────────────── -->
+  <section class="card card-timeline">
+    <div class="card-head">
+      <span class="card-title">Request volume</span>
+      <span class="card-meta">{{ timeRange }} · hourly</span>
+    </div>
+    <div class="chart-wrap-tall">
+      <canvas #timelineBar role="img" aria-label="Bar chart showing request volume over time">No timeline data.</canvas>
+    </div>
+  </section>
+
+  <!-- ── Middle row: table + endpoints ─────────────────────── -->
+  <div class="row-two-col">
+
+    <!-- Request table -->
+    <section class="card card-table">
+      <div class="card-head">
+        <span class="card-title">Recent requests</span>
+        <span class="card-meta">
+          {{ totalElements | number }} total &nbsp;·&nbsp; page {{ currentPage + 1 }}/{{ totalPages }}
+        </span>
+      </div>
+
+      <div class="table-scroll">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th style="min-width:140px">Time</th>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>User</th>
+              <th>IP</th>
+              <th style="min-width:90px">Req Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of logs" [class.row-err]="log.status >= 500" [class.row-warn]="log.status >= 400 && log.status < 500">
+              <td class="cell-time" style="white-space:nowrap">{{ timeLabel(log.time) }}</td>
+              <td><span class="method-badge method-{{ log.method.toLowerCase() }}">{{ log.method }}</span></td>
+              <td class="cell-uri" [title]="log.uri">{{ normalizeUri(log.uri) }}</td>
+              <td><span class="status-badge" [ngClass]="statusClass(log.status)">{{ log.status }}</span></td>
+              <td><span class="role-badge" [ngClass]="roleClass(log.role)">{{ roleLabel(log.role) }}</span></td>
+              <td class="cell-user">{{ log.user_email || '—' }}</td>
+              <td class="cell-ip" style="white-space:nowrap">{{ log.ip || '—' }}</td>
+              <td class="cell-rt" [class.kpi-warn]="log.request_time > 500" style="white-space:nowrap">
+                {{ log.request_time != null ? (log.request_time + ' s') : '—' }}
+              </td>
+            </tr>
+            <tr *ngIf="!logs.length && !loading">
+              <td colspan="8" class="empty-row">No matching requests</td>
+            </tr>
+            <tr *ngIf="loading && !logs.length">
+              <td colspan="8" class="loading-row">
+                <span class="loading-dots"><span></span><span></span><span></span></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar">
+        <button class="btn-page" (click)="prevPage()" [disabled]="currentPage === 0 || loading">
+          ← Prev
+        </button>
+        <div class="page-jumper">
+          <span class="page-label">{{ currentPage + 1 }} / {{ totalPages }}</span>
+        </div>
+        <button class="btn-page" (click)="nextPage()" [disabled]="currentPage >= totalPages - 1 || loading || totalPages <= 1">
+          Next →
+        </button>
+        <select class="page-size-select" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+          <option [value]="10">10 / page</option>
+          <option [value]="20">20 / page</option>
+          <option [value]="50">50 / page</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Top endpoints -->
+    <section class="card card-endpoints">
+      <div class="card-head">
+        <span class="card-title">Top endpoints</span>
+        <span class="card-meta">by request count</span>
+      </div>
+      <div class="endpoint-list">
+        <div class="ep-row" *ngFor="let ep of endpoints; let i = index">
+          <span class="ep-rank">{{ i + 1 }}</span>
+          <div class="ep-info">
+            <div class="ep-uri" [title]="ep.uri">{{ normalizeUri(ep.uri) }}</div>
+            <div class="ep-bar-track">
+              <div class="ep-bar-fill" [style.width.%]="endpointPct(ep.count)"></div>
+            </div>
+          </div>
+          <span class="ep-count">{{ ep.count }}</span>
+        </div>
+        <div *ngIf="!endpoints.length" class="empty-row">No endpoint data yet</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── Charts row ────────────────────────────────────────── -->
+  <div class="row-two-col">
+
+    <!-- Status distribution -->
+    <section class="card card-chart">
+      <div class="card-head">
+        <span class="card-title">Status distribution</span>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#639922"></span>2xx success</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#BA7517"></span>4xx error</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>5xx error</span>
+      </div>
+      <div class="chart-wrap-sm">
+        <canvas #statusPie role="img" aria-label="Doughnut chart showing HTTP status distribution">No data.</canvas>
+      </div>
+    </section>
+
+    <!-- Role distribution -->
+    <section class="card card-chart">
+      <div class="card-head">
+        <span class="card-title">Role distribution</span>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#7F77DD"></span>Admin</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#378ADD"></span>Avocat</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>Client</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#888780"></span>Anonymous</span>
+      </div>
+      <div class="chart-wrap-sm">
+        <canvas #rolePie role="img" aria-label="Doughnut chart showing user role distribution">No data.</canvas>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+
+<!-- ── Delete History Modal ──────────────────────────────────── -->
+<div class="modal-backdrop" *ngIf="showDeleteModal" (click)="closeDeleteModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-row">
+        <span class="modal-icon">🗑</span>
+        <h2 class="modal-title" id="modal-title">Delete Request History</h2>
+      </div>
+      <button class="modal-close" (click)="closeDeleteModal()" [disabled]="deleting" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-desc">
+        Permanently remove audit logs from the database. This action cannot be undone.
+      </p>
+
+      <div class="modal-field">
+        <label class="control-label" for="delete-range-select">Delete range</label>
+        <select id="delete-range-select"
+                class="ctrl-select modal-select"
+                [(ngModel)]="deleteRange"
+                [disabled]="deleting">
+          <option *ngFor="let opt of deleteRangeOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+
+      <div class="modal-warning" [class.modal-warning-all]="deleteRange === 'all'">
+        <span class="warning-icon">{{ deleteRange === 'all' ? '⚠' : 'ℹ' }}</span>
+        <span *ngIf="deleteRange !== 'all'">
+          Records from <strong>{{ deleteRangeLabel }}</strong> will be deleted.
+        </span>
+        <span *ngIf="deleteRange === 'all'">
+          <strong>All history will be wiped.</strong> This cannot be recovered.
+        </span>
+      </div>
+
+      <div class="modal-result" *ngIf="deleteResult"
+           [class.result-ok]="deleteResult.startsWith('✓')"
+           [class.result-err]="deleteResult.startsWith('✗')">
+        {{ deleteResult }}
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" (click)="closeDeleteModal()" [disabled]="deleting">
+        Cancel
+      </button>
+      <button class="btn-modal-confirm" (click)="confirmDelete()" [disabled]="deleting">
+        <span *ngIf="!deleting">Delete {{ deleteRangeLabel }}</span>
+        <span *ngIf="deleting" class="loading-dots">
+          <span></span><span></span><span></span>
+        </span>
+      </button>
+    </div>
+
+  </div>
+</div>

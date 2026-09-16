@@ -1,0 +1,869 @@
+// src/app/components/audit-dashboard/audit-dashboard.component.scss
+// ─── Design tokens ────────────────────────────────────────────
+$bg-base    : #0f1117;
+$bg-card    : #161b27;
+$bg-card-alt: #1a2035;
+$border     : rgba(255, 255, 255, 0.07);
+$border-hi  : rgba(255, 255, 255, 0.13);
+
+$text-primary  : #e8ecf0;
+$text-secondary: #8a95a3;
+$text-muted    : #545f6d;
+
+$ok     : #639922;
+$ok-bg  : rgba(99, 153, 34, 0.12);
+$warn   : #BA7517;
+$warn-bg: rgba(186, 117, 23, 0.12);
+$err    : #E24B4A;
+$err-bg : rgba(226, 75, 74, 0.12);
+
+$blue   : #378ADD;
+$purple : #7F77DD;
+$teal   : #1D9E75;
+$gray   : #888780;
+
+$radius : 10px;
+$radius-lg: 14px;
+$font   : 'IBM Plex Mono', 'Fira Code', 'Cascadia Code', monospace;
+$font-ui: 'Inter', system-ui, sans-serif;
+
+// ─── Google Fonts ─────────────────────────────────────────────
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+
+// ─── Base ─────────────────────────────────────────────────────
+.dashboard {
+  font-family: $font-ui;
+  background: $bg-base;
+  min-height: 100vh;
+  color: $text-primary;
+  padding: 1.5rem 2rem 3rem;
+  box-sizing: border-box;
+}
+
+// ─── Header ───────────────────────────────────────────────────
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid $border;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.dot-live {
+    background: $ok;
+    box-shadow: 0 0 0 3px rgba(99, 153, 34, 0.2);
+  }
+  &.dot-loading {
+    background: $warn;
+    animation: pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.page-title {
+  font-family: $font;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: $text-primary;
+  margin: 0;
+}
+
+.last-updated {
+  font-size: 11px;
+  color: $text-muted;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.header-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $text-muted;
+}
+
+.btn-group {
+  display: flex;
+  border: 1px solid $border-hi;
+  border-radius: $radius;
+  overflow: hidden;
+}
+
+.btn-range {
+  background: transparent;
+  border: none;
+  color: $text-secondary;
+  font-size: 12px;
+  font-family: $font;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-right: 1px solid $border;
+
+  &:last-child { border-right: none; }
+
+  &:hover { background: rgba(255,255,255,0.05); color: $text-primary; }
+
+  &.active {
+    background: $blue;
+    color: #fff;
+  }
+}
+
+.ctrl-select {
+  background: $bg-card;
+  border: 1px solid $border-hi;
+  color: $text-primary;
+  font-size: 12px;
+  font-family: $font-ui;
+  padding: 5px 28px 5px 10px;
+  border-radius: $radius;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a95a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+
+  &:focus { outline: none; border-color: $blue; }
+  option { background: #1a2035; }
+}
+
+.btn-refresh {
+  background: transparent;
+  border: 1px solid $border-hi;
+  color: $text-secondary;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+  align-self: flex-end;
+
+  &:hover { color: $text-primary; border-color: $blue; }
+  &:disabled { opacity: 0.4; cursor: default; }
+}
+
+.refresh-icon {
+  display: inline-block;
+  transition: transform 0.3s;
+  &.spin { animation: spin 0.7s linear infinite; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ─── KPI strip ────────────────────────────────────────────────
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 1100px) { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px)  { grid-template-columns: repeat(2, 1fr); }
+}
+
+.kpi-card {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.2s;
+
+  &:hover { border-color: $border-hi; }
+}
+
+.kpi-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.7;
+
+  &.kpi-icon-total  { color: $blue; }
+  &.kpi-icon-jwt    { color: $ok; }
+  &.kpi-icon-anon   { color: $warn; }
+  &.kpi-icon-users  { color: $purple; }
+  &.kpi-icon-ok     { color: $ok; }
+  &.kpi-icon-warn   { color: $warn; }
+  &.kpi-icon-danger { color: $err; }
+}
+
+.kpi-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.kpi-value {
+  font-family: $font;
+  font-size: 1.3rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: $text-primary;
+  white-space: nowrap;
+
+  &.kpi-ok     { color: $ok; }
+  &.kpi-warn   { color: $warn; }
+  &.kpi-danger { color: $err; }
+}
+
+.kpi-label {
+  font-size: 11px;
+  color: $text-muted;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.kpi-pct {
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: $text-secondary;
+}
+
+// ─── Cards ────────────────────────────────────────────────────
+.card {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid $border;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-primary;
+  letter-spacing: 0.01em;
+}
+
+.card-meta {
+  font-size: 11px;
+  color: $text-muted;
+  font-family: $font;
+}
+
+// ─── Timeline card ────────────────────────────────────────────
+.card-timeline {
+  margin-bottom: 1.5rem;
+}
+
+.chart-wrap-tall {
+  position: relative;
+  height: 160px;
+  padding: 12px 18px 8px;
+}
+
+// ─── Two-col row ──────────────────────────────────────────────
+.row-two-col {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  @media (max-width: 1000px) { grid-template-columns: 1fr; }
+}
+
+// ─── Table ────────────────────────────────────────────────────
+.card-table { display: flex; flex-direction: column; }
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  thead th {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: $text-muted;
+    padding: 8px 14px;
+    text-align: left;
+    background: $bg-card-alt;
+    border-bottom: 1px solid $border;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid $border;
+    transition: background 0.1s;
+
+    &:hover    { background: rgba(255,255,255,0.03); }
+    &:last-child { border-bottom: none; }
+    &.row-err  { background: rgba(226, 75, 74, 0.04); }
+    &.row-warn { background: rgba(186, 117, 23, 0.04); }
+  }
+
+  td {
+    padding: 8px 14px;
+    color: $text-secondary;
+    vertical-align: middle;
+  }
+}
+
+.cell-time {
+  font-family: $font;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cell-uri {
+  font-family: $font;
+  font-size: 11px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: $text-primary !important;
+}
+
+.cell-user {
+  font-size: 11px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ─── Method badges ────────────────────────────────────────────
+.method-badge {
+  font-family: $font;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.method-get    { background: rgba(55, 138, 221, 0.15); color: #6cb4f5; }
+.method-post   { background: rgba(99, 153, 34, 0.15);  color: #90cd4a; }
+.method-put    { background: rgba(186, 117, 23, 0.15); color: #f0a83a; }
+.method-patch  { background: rgba(127, 119, 221, 0.15); color: #a9a3f0; }
+.method-delete { background: rgba(226, 75, 74, 0.15);  color: #f07070; }
+
+// ─── Status badges ────────────────────────────────────────────
+.status-badge {
+  font-family: $font;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.badge-ok   { background: $ok-bg;   color: lighten($ok, 20%); }
+.badge-warn { background: $warn-bg; color: lighten($warn, 20%); }
+.badge-err  { background: $err-bg;  color: lighten($err, 15%); }
+
+// ─── Role badges ──────────────────────────────────────────────
+.role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badge-admin  { background: rgba(127, 119, 221, 0.15); color: #a9a3f0; }
+.badge-avocat { background: rgba(55, 138, 221, 0.15);  color: #6cb4f5; }
+.badge-client { background: rgba(29, 158, 117, 0.15);  color: #4ecfa0; }
+.badge-anon   { background: rgba(136, 135, 128, 0.12); color: #999; }
+
+// ─── Loading states ───────────────────────────────────────────
+.empty-row, .loading-row {
+  text-align: center;
+  padding: 2.5rem !important;
+  color: $text-muted;
+  font-size: 12px;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $text-muted;
+    animation: bounce 1.2s ease-in-out infinite;
+
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+// ─── Pagination ───────────────────────────────────────────────
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid $border;
+  background: $bg-card-alt;
+}
+
+.btn-page {
+  background: transparent;
+  border: 1px solid $border-hi;
+  color: $text-secondary;
+  font-size: 12px;
+  font-family: $font;
+  padding: 4px 12px;
+  border-radius: $radius;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover:not(:disabled) { color: $text-primary; border-color: $blue; }
+  &:disabled { opacity: 0.35; cursor: default; }
+}
+
+.page-label {
+  font-family: $font;
+  font-size: 12px;
+  color: $text-muted;
+  padding: 0 4px;
+}
+
+.page-jumper { flex: 1; text-align: center; }
+
+.page-size-select {
+  @extend .ctrl-select;
+  margin-left: auto;
+  font-size: 11px;
+}
+
+// ─── Endpoints card ───────────────────────────────────────────
+.card-endpoints { height: 100%; }
+
+.endpoint-list {
+  padding: 10px 0;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.ep-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  transition: background 0.1s;
+
+  &:hover { background: rgba(255,255,255,0.03); }
+}
+
+.ep-rank {
+  font-family: $font;
+  font-size: 10px;
+  color: $text-muted;
+  width: 14px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.ep-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ep-uri {
+  font-family: $font;
+  font-size: 11px;
+  color: $text-secondary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ep-bar-track {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ep-bar-fill {
+  height: 100%;
+  background: $blue;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  opacity: 0.7;
+}
+
+.ep-count {
+  font-family: $font;
+  font-size: 11px;
+  font-weight: 500;
+  color: $text-secondary;
+  min-width: 30px;
+  text-align: right;
+}
+
+// ─── Chart cards ──────────────────────────────────────────────
+.card-chart {
+  height: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 18px 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: $text-muted;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.chart-wrap-sm {
+  position: relative;
+  height: 180px;
+  padding: 12px 18px;
+}
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 10px;
+}
+
+.username {
+  color: $text-secondary;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.btn-logout {
+  background: #E24B4A;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: $radius;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #c93d3d;
+  }
+}
+.btn-change-pwd {
+  @extend .btn-logout;
+  background: transparent;
+  border: 1px solid var(--border, #444);
+  color: var(--text-muted, #aaa);
+
+  &:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text, #fff);
+  }
+}
+
+.btn-delete-history {
+  @extend .btn-logout;
+  background: transparent;
+  border: 1px solid rgba($err, 0.4);
+  color: lighten($err, 10%);
+
+  &:hover {
+    background: rgba($err, 0.1);
+    border-color: $err;
+    color: lighten($err, 15%);
+  }
+}
+
+// ─── Delete History Modal ──────────────────────────────────────
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: $bg-card;
+  border: 1px solid $border-hi;
+  border-radius: $radius-lg;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.18s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid $border;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: $text-muted;
+  font-size: 14px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: rgba(255,255,255,0.07);
+    color: $text-primary;
+  }
+  &:disabled { opacity: 0.35; cursor: default; }
+}
+
+.modal-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: $text-secondary;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-select {
+  width: 100%;
+  font-size: 13px;
+  padding: 7px 32px 7px 12px;
+}
+
+.modal-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: $radius;
+  background: rgba($blue, 0.08);
+  border: 1px solid rgba($blue, 0.2);
+  font-size: 12px;
+  color: $text-secondary;
+  line-height: 1.5;
+  transition: background 0.2s, border-color 0.2s;
+
+  strong { color: $text-primary; }
+
+  &.modal-warning-all {
+    background: rgba($err, 0.08);
+    border-color: rgba($err, 0.3);
+    color: lighten($err, 15%);
+
+    strong { color: lighten($err, 15%); }
+  }
+}
+
+.warning-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.modal-result {
+  font-family: $font;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: $radius;
+  text-align: center;
+
+  &.result-ok {
+    background: $ok-bg;
+    color: lighten($ok, 20%);
+    border: 1px solid rgba($ok, 0.25);
+  }
+
+  &.result-err {
+    background: $err-bg;
+    color: lighten($err, 15%);
+    border: 1px solid rgba($err, 0.25);
+  }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid $border;
+}
+
+.btn-modal-cancel {
+  background: transparent;
+  border: 1px solid $border-hi;
+  color: $text-secondary;
+  font-size: 12px;
+  font-family: $font-ui;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: $radius;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover:not(:disabled) { color: $text-primary; border-color: rgba(255,255,255,0.25); }
+  &:disabled { opacity: 0.35; cursor: default; }
+}
+
+.btn-modal-confirm {
+  background: $err;
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-family: $font-ui;
+  font-weight: 600;
+  padding: 6px 18px;
+  border-radius: $radius;
+  cursor: pointer;
+  min-width: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+
+  &:hover:not(:disabled) { background: darken($err, 8%); }
+  &:disabled { opacity: 0.55; cursor: default; }
+
+  .loading-dots {
+    span {
+      background: rgba(255,255,255,0.7);
+    }
+  }
+}

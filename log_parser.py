@@ -87,6 +87,22 @@ def decode_jwt_payload(token: str) -> dict:
 # LOG LINE PROCESSOR
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _safe_int(value, default: int = 0) -> int:
+    """Convert a value to int, returning default for '-', None, or invalid strings."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    """Convert a value to float, returning default for '-', None, or invalid strings."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def process_line(line: str, collection) -> None:
     """Parse one JSON log line and insert it into MongoDB."""
     line = line.strip()
@@ -125,9 +141,9 @@ def process_line(line: str, collection) -> None:
         "app":          log.get("app", "cabinet-avocat"),   # ← tagged by Nginx map block
         "method":       log.get("method"),
         "uri":          uri,
-        "status":       int(log.get("status", 0)),
-        "request_time": float(log.get("request_time", 0)),
-        "bytes_sent":   int(log.get("bytes_sent", 0)),
+        "status":       _safe_int(log.get("status"), 0),
+        "request_time": _safe_float(log.get("request_time"), 0.0),
+        "bytes_sent":   _safe_int(log.get("bytes_sent"), 0),
         "user_agent":   log.get("user_agent"),
         "referer":      log.get("referer"),
 

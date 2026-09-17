@@ -33,7 +33,8 @@ import {
   AuditLog,
   AuditStats,
   EndpointCount,
-  HourlyCount
+  HourlyCount,
+  IpCount
 } from '../../models/audit-log.model';
 
 Chart.register(
@@ -55,12 +56,13 @@ Chart.register(
 export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChild('statusPie')   statusPieRef!:   ElementRef<HTMLCanvasElement>;
-  @ViewChild('rolePie')     rolePieRef!:     ElementRef<HTMLCanvasElement>;
+  @ViewChild('topIpsBar')   topIpsBarRef!:   ElementRef<HTMLCanvasElement>;  // ← replaces rolePie
   @ViewChild('timelineBar') timelineBarRef!: ElementRef<HTMLCanvasElement>;
 
   logs:      AuditLog[]      = [];
   endpoints: EndpointCount[] = [];
   timeline:  HourlyCount[]   = [];
+  topIps:    IpCount[]       = [];           // ← new
   username:  string          = '';
 
   availableApps: string[] = [];
@@ -100,7 +102,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   ];
 
   private statusChart?:   Chart<'doughnut'>;
-  private roleChart?:     Chart<'doughnut'>;
+  private topIpsChart?:   Chart<'bar'>;        // ← replaces roleChart
   private timelineChart?: Chart<'bar'>;
   private chartsReady     = false;
   private refreshTimer?:  ReturnType<typeof setInterval>;
@@ -152,7 +154,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
     clearInterval(this.clockTimer);
     clearTimeout(this.closeTimer);
     this.statusChart?.destroy();
-    this.roleChart?.destroy();
+    this.topIpsChart?.destroy();
     this.timelineChart?.destroy();
   }
 
@@ -185,6 +187,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       this.currentPage = this.totalPages - 1;
     }
 
+    // Stats — now correctly scoped to timeRange + app
     this.auditService.getStats(this.filterApp, this.timeRange).subscribe({
       next:  s  => (this.stats = s),
       error: err => console.warn('Stats load failed', err)
@@ -215,9 +218,16 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
     });
 
     this.auditService.getTopEndpoints(8, this.filterApp).subscribe(e => this.endpoints = e || []);
+
     this.auditService.getHourlyTimeline(this.timeRange, this.filterApp).subscribe(t => {
       this.timeline = t || [];
       if (this.chartsReady) this.updateTimelineChart();
+    });
+
+    // Load top IPs (respects timeRange + app filter)
+    this.auditService.getTopIps(8, this.timeRange, this.filterApp).subscribe(ips => {
+      this.topIps = ips || [];
+      if (this.chartsReady) this.updateTopIpsChart();
     });
   }
 
@@ -250,8 +260,8 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   closeDeleteModal(): void {
-    if (this.deleting) return;          // still block mid-delete clicks
-    clearTimeout(this.closeTimer);      // cancel pending auto-close
+    if (this.deleting) return;
+    clearTimeout(this.closeTimer);
     this.showDeleteModal = false;
     this.deleteResult    = null;
   }
@@ -267,7 +277,6 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
         this.deleteResult = `✓ ${res.deleted} record(s) deleted.`;
         this.currentPage  = 0;
         this.load();
-        // auto-close after 1.5 s — tracked so Cancel/X can cancel it
         this.closeTimer = setTimeout(() => this.closeDeleteModal(), 1500);
       },
       error: err => {
@@ -301,6 +310,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       }}
     };
 
+    // Status doughnut
     this.statusChart = new Chart(this.statusPieRef.nativeElement, {
       type: 'doughnut',
       data: {
@@ -310,15 +320,48 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       options: doughnutOpts
     });
 
-    this.roleChart = new Chart(this.rolePieRef.nativeElement, {
-      type: 'doughnut',
+    // Top IPs horizontal bar chart — replaces the role doughnut
+    this.topIpsChart = new Chart(this.topIpsBarRef.nativeElement, {
+      type: 'bar',
       data: {
-        labels: ['Admin', 'Avocat', 'Client', 'Anonymous'],
-        datasets: [{ data: [0, 0, 0, 0], backgroundColor: ['#7F77DD', '#378ADD', '#1D9E75', '#888780'], borderWidth: 0 }]
+        labels: [],
+        datasets: [{
+          label: 'Requests',
+          data: [],
+          backgroundColor: 'rgba(55, 138, 221, 0.65)',
+          borderRadius: 4,
+          borderSkipped: false
+        }]
       },
-      options: doughnutOpts
+      options: {
+        indexAxis: 'y',          // horizontal bars — IPs on y-axis
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.x} request${ctx.parsed.x === 1 ? '' : 's'}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(136,135,128,0.15)' },
+            ticks: { color: '#888780', font: { size: 11 } }
+          },
+          y: {
+            grid: { display: false },
+            ticks: {
+              color: '#8a95a3',
+              font: { size: 11, family: "'IBM Plex Mono', monospace" }
+            }
+          }
+        }
+      }
     });
 
+    // Timeline bar
     this.timelineChart = new Chart(this.timelineBarRef.nativeElement, {
       type: 'bar',
       data: {
@@ -351,24 +394,29 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   private updateCharts(): void {
-    if (!this.statusChart || !this.roleChart) return;
+    if (!this.statusChart) return;
 
     const s2xx = this.stats.total - this.stats.errors;
     const s4xx = this.logs.filter(r => r.status >= 400 && r.status < 500).length;
     const s5xx = this.logs.filter(r => r.status >= 500).length;
     this.statusChart.data.datasets[0].data = [s2xx > 0 ? s2xx : 0, s4xx, s5xx];
     this.statusChart.update();
-
-    const roles = ['ROLE_ADMIN', 'ROLE_AVOCAT', 'ROLE_CLIENT', 'ANONYMOUS'];
-    this.roleChart.data.datasets[0].data = roles.map(r => this.logs.filter(l => l?.role === r).length);
-    this.roleChart.update();
   }
 
   private updateTimelineChart(): void {
     if (!this.timelineChart) return;
-    this.timelineChart.data.labels              = this.timeline.map(h => h.hour);
-    this.timelineChart.data.datasets[0].data    = this.timeline.map(h => h.count);
+    this.timelineChart.data.labels           = this.timeline.map(h => h.hour);
+    this.timelineChart.data.datasets[0].data = this.timeline.map(h => h.count);
     this.timelineChart.update();
+  }
+
+  private updateTopIpsChart(): void {
+    if (!this.topIpsChart) return;
+    // Show IPs in descending order on a horizontal bar (highest count at top)
+    const sorted = [...this.topIps].sort((a, b) => a.count - b.count); // Chart.js renders bottom-up
+    this.topIpsChart.data.labels           = sorted.map(ip => ip.ip);
+    this.topIpsChart.data.datasets[0].data = sorted.map(ip => ip.count);
+    this.topIpsChart.update();
   }
 
   // ─────────────────────────────────────────────────────────────

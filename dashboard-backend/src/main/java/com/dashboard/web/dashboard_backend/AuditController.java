@@ -1,7 +1,6 @@
 package com.dashboard.web.dashboard_backend;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +29,17 @@ public class AuditController {
             case "7d"  -> 168;
             default    ->  24;   // "24h" and fallback
         };
+    }
+
+    /**
+     * Converts a timeRange string to a cutoff Date.
+     * Used to scope stats aggregations so they only cover the selected window,
+     * which fixes the bug where avgResponseMs kept growing because the old
+     * getAuditStats() aggregated ALL documents regardless of range.
+     */
+    private Date toCutoff(String timeRange) {
+        int hours = toHours(timeRange);
+        return Date.from(Instant.now().minus(hours, ChronoUnit.HOURS));
     }
 
     private String toAppFilter(String app) {
@@ -51,7 +62,7 @@ public class AuditController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        var pageable  = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "parsed_at"));
+        var pageable     = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "parsed_at"));
         String appFilter = toAppFilter(app);
         boolean hasApp    = appFilter != null;
         boolean hasMethod = method != null && !method.isBlank();
@@ -95,11 +106,28 @@ public class AuditController {
     }
 
     // ── Stats ────────────────────────────────────────────────────────────
+    //
+    // FIX: Previously this ignored timeRange and app entirely, so the
+    // aggregation ran over all documents — causing avgResponseMs to grow
+    // monotonically as more logs were inserted.  Now we convert timeRange
+    // to a cutoff Date and pass it (+ optional app) into scoped pipelines.
     @GetMapping("/stats")
     public AuditStats getStats(
             @RequestParam(required = false) String app,
             @RequestParam(defaultValue = "24h") String timeRange) {
-        return repository.getAuditStats();
+
+        Date cutoff      = toCutoff(timeRange);
+        String appFilter = toAppFilter(app);
+
+        AuditStats stats = (appFilter != null)
+                ? repository.getAuditStatsByApp(cutoff, appFilter)
+                : repository.getAuditStats(cutoff);
+
+        // Guard: aggregation returns null when the collection is empty
+        if (stats == null) {
+            stats = new AuditStats();
+        }
+        return stats;
     }
 
     // ── Top endpoints ────────────────────────────────────────────────────
@@ -121,7 +149,7 @@ public class AuditController {
             @RequestParam(defaultValue = "24h") String timeRange,
             @RequestParam(required = false) String app) {
 
-        int hours = toHours(timeRange);
+        int hours        = toHours(timeRange);
         String appFilter = toAppFilter(app);
         if (appFilter != null) {
             return repository.getHourlyTimelineByApp(hours, appFilter);
@@ -129,8 +157,22 @@ public class AuditController {
         return repository.getHourlyTimeline(hours);
     }
 
+    // ── Top IPs ──────────────────────────────────────────────────────────
+    @GetMapping("/top-ips")
+    public List<IpCount> getTopIps(
+            @RequestParam(defaultValue = "8")   int limit,
+            @RequestParam(defaultValue = "24h") String timeRange,
+            @RequestParam(required = false)     String app) {
+
+        int hours        = toHours(timeRange);
+        String appFilter = toAppFilter(app);
+        if (appFilter != null) {
+            return repository.findTopIpsByApp(hours, limit, appFilter);
+        }
+        return repository.findTopIps(hours, limit);
+    }
+
     // ── Delete history ───────────────────────────────────────────────────
-    // range values: "last_day" | "last_week" | "last_month" | "all"
     @DeleteMapping("/history")
     public ResponseEntity<Map<String, Object>> deleteHistory(
             @RequestParam(defaultValue = "all") String range) {
@@ -148,7 +190,7 @@ public class AuditController {
                 case "last_month" -> Instant.now().minus(30, ChronoUnit.DAYS);
                 default -> throw new IllegalArgumentException("Unknown range: " + range);
             };
-            deleted = repository.deleteByParsedAtAfter(java.util.Date.from(cutoff));
+            deleted = repository.deleteByParsedAtAfter(Date.from(cutoff));
         }
 
         return ResponseEntity.ok(Map.of(

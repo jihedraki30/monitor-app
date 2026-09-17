@@ -65,9 +65,17 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
     @Query(value = "{ 'parsed_at': { $gte: ?0 } }", delete = true)
     long deleteByParsedAtAfter(Date cutoff);
 
-    // ── Stats aggregation ────────────────────────────────────────────────
+    // ── Stats aggregation (scoped: timeRange + optional app) ────────────
+    //
+    // FIX: The old getAuditStats() aggregated ALL documents regardless of
+    // timeRange or app filter, causing avgResponseMs to keep growing as the
+    // total dataset grew.  These two variants ($match first) restrict the
+    // pipeline to the relevant window before computing the average.
 
     @Aggregation(pipeline = {
+        // ?0 = cutoff Date (already converted from timeRange hours in the controller)
+        "{ $match: { parsed_at: { $gte: ?0 } } }",
+
         "{ $group: { _id: null, " +
         "  total:          { $sum: 1 }, " +
         "  withJwt:        { $sum: { $cond: ['$has_token', 1, 0] } }, " +
@@ -76,12 +84,31 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
         "  avgResponseSec: { $avg: '$request_time' } } }",
 
         "{ $project: { _id: 0, total: 1, withJwt: 1, " +
-        "  anonymous:      { $subtract: ['$total', '$withJwt'] }, " +
-        "  errors:         1, " +
-        "  uniqueUsers:    { $size: '$uniqueUsers' }, " +
-        "  avgResponseMs:  { $round: [{ $multiply: ['$avgResponseSec', 1000] }, 1] } } }"
+        "  anonymous:     { $subtract: ['$total', '$withJwt'] }, " +
+        "  errors:        1, " +
+        "  uniqueUsers:   { $size: '$uniqueUsers' }, " +
+        "  avgResponseMs: { $round: [{ $multiply: ['$avgResponseSec', 1000] }, 1] } } }"
     })
-    AuditStats getAuditStats();
+    AuditStats getAuditStats(Date cutoff);
+
+    @Aggregation(pipeline = {
+        // ?0 = cutoff Date, ?1 = app name
+        "{ $match: { parsed_at: { $gte: ?0 }, app: ?1 } }",
+
+        "{ $group: { _id: null, " +
+        "  total:          { $sum: 1 }, " +
+        "  withJwt:        { $sum: { $cond: ['$has_token', 1, 0] } }, " +
+        "  errors:         { $sum: { $cond: [{ $gte: ['$status', 400] }, 1, 0] } }, " +
+        "  uniqueUsers:    { $addToSet: '$user_email' }, " +
+        "  avgResponseSec: { $avg: '$request_time' } } }",
+
+        "{ $project: { _id: 0, total: 1, withJwt: 1, " +
+        "  anonymous:     { $subtract: ['$total', '$withJwt'] }, " +
+        "  errors:        1, " +
+        "  uniqueUsers:   { $size: '$uniqueUsers' }, " +
+        "  avgResponseMs: { $round: [{ $multiply: ['$avgResponseSec', 1000] }, 1] } } }"
+    })
+    AuditStats getAuditStatsByApp(Date cutoff, String app);
 
     // ── Distinct apps ────────────────────────────────────────────────────
 
@@ -129,4 +156,24 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
         "{ $project: { _id: 0, hour: '$_id', count: 1 } }"
     })
     List<HourlyCount> getHourlyTimelineByApp(int hours, String app);
+
+    // ── Top IPs ──────────────────────────────────────────────────────────
+
+    @Aggregation(pipeline = {
+        "{ $match: { $expr: { $gte: [ '$parsed_at', { $dateSubtract: { startDate: '$$NOW', unit: 'hour', amount: ?0 } } ] }, ip: { $ne: null } } }",
+        "{ $group: { _id: '$ip', count: { $sum: 1 } } }",
+        "{ $sort:  { count: -1 } }",
+        "{ $limit: ?1 }",
+        "{ $project: { _id: 0, ip: '$_id', count: 1 } }"
+    })
+    List<IpCount> findTopIps(int hours, int limit);
+
+    @Aggregation(pipeline = {
+        "{ $match: { $expr: { $gte: [ '$parsed_at', { $dateSubtract: { startDate: '$$NOW', unit: 'hour', amount: ?0 } } ] }, ip: { $ne: null }, app: ?2 } }",
+        "{ $group: { _id: '$ip', count: { $sum: 1 } } }",
+        "{ $sort:  { count: -1 } }",
+        "{ $limit: ?1 }",
+        "{ $project: { _id: 0, ip: '$_id', count: 1 } }"
+    })
+    List<IpCount> findTopIpsByApp(int hours, int limit, String app);
 }

@@ -34,4 +34,9 @@ export interface EndpointCount {
 export interface HourlyCount {
   hour:  string;
   count: number;
+
+}
+export interface IpCount {
+  ip: string;
+  count: number
 }

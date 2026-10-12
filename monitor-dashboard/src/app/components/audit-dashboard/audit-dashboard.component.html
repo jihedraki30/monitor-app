@@ -124,6 +124,69 @@
     </div>
   </section>
 
+  <!-- ── Average traffic per app ────────────────────────────── -->
+  <section class="card card-rates">
+    <div class="card-head">
+      <span class="card-title">Average traffic per app</span>
+      <span class="card-meta">
+        range {{ timeRange }} &nbsp;·&nbsp; averaged over {{ ratesPeriodLabel }} &nbsp;·&nbsp; click a row to filter
+      </span>
+    </div>
+    <div class="table-scroll">
+      <table class="log-table rates-table">
+        <colgroup>
+          <col class="col-app">
+          <col class="col-num">
+          <col class="col-share">
+          <col class="col-num">
+          <col class="col-num">
+          <col class="col-num">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="app-col">App</th>
+            <th class="num">Requests</th>
+            <th class="share-col">Share</th>
+            <th class="num rate-start">Avg / min</th>
+            <th class="num">Avg / hour</th>
+            <th class="num">Avg / day</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of appRates"
+              class="clickable"
+              [class.row-selected]="filterApp === r.app"
+              (click)="selectApp(r.app)">
+            <td class="app-cell">{{ appLabel(r.app) }}</td>
+            <td class="num">{{ r.total | number }}</td>
+            <td class="share-col">
+              <div class="share">
+                <div class="share-track"><div class="share-fill" [style.width.%]="sharePct(r)"></div></div>
+                <span class="share-pct">{{ sharePct(r) | number:'1.1-1' }}%</span>
+              </div>
+            </td>
+            <td class="num rate-start">{{ r.perMinute | number:'1.2-2' }}</td>
+            <td class="num">{{ r.perHour | number:'1.1-1' }}</td>
+            <td class="num">{{ r.perDay | number:'1.0-0' }}</td>
+          </tr>
+          <tr *ngIf="!appRates.length">
+            <td colspan="6" class="empty-row">No traffic in this range</td>
+          </tr>
+        </tbody>
+        <tfoot *ngIf="appRates.length > 1">
+          <tr class="rates-total">
+            <td class="app-cell">Total</td>
+            <td class="num">{{ ratesTotal.total | number }}</td>
+            <td class="share-col"></td>
+            <td class="num rate-start">{{ ratesTotal.perMinute | number:'1.2-2' }}</td>
+            <td class="num">{{ ratesTotal.perHour | number:'1.1-1' }}</td>
+            <td class="num">{{ ratesTotal.perDay | number:'1.0-0' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
   <!-- ── Timeline (full width) ──────────────────────────────── -->
   <section class="card card-timeline">
     <div class="card-head">
@@ -165,7 +228,7 @@
             <tr *ngFor="let log of logs" [class.row-err]="log.status >= 500" [class.row-warn]="log.status >= 400 && log.status < 500">
               <td class="cell-time" style="white-space:nowrap">{{ timeLabel(log.time) }}</td>
               <td><span class="method-badge method-{{ log.method.toLowerCase() }}">{{ log.method }}</span></td>
-              <td class="cell-uri" [title]="log.uri">{{ normalizeUri(log.uri) }}</td>
+              <td class="cell-uri" (mouseenter)="showTip($event, log)" (mouseleave)="hideTip()">{{ normalizeUri(log.uri) }}</td>
               <td><span class="status-badge" [ngClass]="statusClass(log.status)">{{ log.status }}</span></td>
               <td><span class="role-badge" [ngClass]="roleClass(log.role)">{{ roleLabel(log.role) }}</span></td>
               <td class="cell-user">{{ log.user_email || '—' }}</td>
@@ -317,5 +380,29 @@
       </button>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Endpoint hover tooltip ────────────────────────────────── -->
+<div class="endpoint-tip" *ngIf="hoveredLog"
+     [class.tip-above]="tipAbove"
+     [style.left.px]="tipX"
+     [style.top.px]="tipY">
+  <div class="tip-head">
+    <span class="method-badge method-{{ hoveredLog.method.toLowerCase() }}">{{ hoveredLog.method }}</span>
+    <span class="tip-uri">{{ hoveredLog.uri }}</span>
+  </div>
+  <div class="tip-grid">
+    <span class="tip-k">Pattern</span>   <span>{{ normalizeUri(hoveredLog.uri) }}</span>
+    <span class="tip-k">App</span>       <span>{{ hoveredLog.app || '—' }}</span>
+    <span class="tip-k">Status</span>    <span>{{ hoveredLog.status }}</span>
+    <span class="tip-k">Req time</span>  <span>{{ hoveredLog.request_time != null ? (hoveredLog.request_time + ' s') : '—' }}</span>
+    <span class="tip-k">Bytes sent</span><span>{{ hoveredLog.bytes_sent != null ? (hoveredLog.bytes_sent | number) : '—' }}</span>
+    <span class="tip-k">Time</span>      <span>{{ timeLabel(hoveredLog.time) }}</span>
+    <span class="tip-k">IP</span>        <span>{{ hoveredLog.ip || '—' }}</span>
+    <span class="tip-k">User</span>      <span>{{ hoveredLog.user_email || '—' }}</span>
+    <span class="tip-k">Role</span>      <span>{{ roleLabel(hoveredLog.role) }}</span>
+    <span class="tip-k">JWT</span>       <span>{{ hoveredLog.has_token ? 'yes' : 'no' }}</span>
+    <span class="tip-k">User-Agent</span><span class="tip-ua">{{ hoveredLog.user_agent || '—' }}</span>
   </div>
 </div>

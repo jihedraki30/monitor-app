@@ -34,7 +34,8 @@ import {
   AuditStats,
   EndpointCount,
   HourlyCount,
-  IpCount
+  IpCount,
+  AppRate
 } from '../../models/audit-log.model';
 
 Chart.register(
@@ -64,6 +65,13 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   timeline:  HourlyCount[]   = [];
   topIps:    IpCount[]       = [];           // ← new
   username:  string          = '';
+  appRates:  AppRate[]       = [];
+
+  // Endpoint hover tooltip
+  hoveredLog: AuditLog | null = null;
+  tipX     = 0;
+  tipY     = 0;
+  tipAbove = false;
 
   availableApps: string[] = [];
 
@@ -224,11 +232,73 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       if (this.chartsReady) this.updateTimelineChart();
     });
 
+    // Average traffic per app (per minute / hour / day) over the selected range
+    this.auditService.getAppRates(this.timeRange).subscribe({
+      next:  r   => (this.appRates = r || []),
+      error: err => console.warn('Rates load failed', err)
+    });
+
     // Load top IPs (respects timeRange + app filter)
     this.auditService.getTopIps(8, this.timeRange, this.filterApp).subscribe(ips => {
       this.topIps = ips || [];
       if (this.chartsReady) this.updateTopIpsChart();
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ENDPOINT TOOLTIP
+  // ─────────────────────────────────────────────────────────────
+
+  showTip(ev: MouseEvent, log: AuditLog): void {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const tipW = 360, tipH = 260;
+    this.tipX     = Math.max(8, Math.min(rect.left, window.innerWidth - tipW - 8));
+    this.tipAbove = rect.bottom + tipH > window.innerHeight;
+    this.tipY     = this.tipAbove ? rect.top - 6 : rect.bottom + 6;
+    this.hoveredLog = log;
+  }
+
+  hideTip(): void { this.hoveredLog = null; }
+
+  // ── Average traffic per app ──────────────────────────────────
+
+  /** Period (seconds) all apps were averaged over — the same for every row. */
+  get ratesPeriodSec(): number {
+    return this.appRates.length ? this.appRates[0].periodSeconds : 0;
+  }
+
+  get ratesPeriodLabel(): string {
+    const s = this.ratesPeriodSec;
+    if (!s) return '—';
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m} min`;
+    const h = Math.floor(m / 60), rm = m % 60;
+    if (h < 48) return rm ? `${h}h ${rm}m` : `${h}h`;
+    const d = Math.floor(h / 24), rh = h % 24;
+    return rh ? `${d}d ${rh}h` : `${d}d`;
+  }
+
+  /** Total row: computed from the grand total, not by summing rounded rates. */
+  get ratesTotal(): { total: number; perMinute: number; perHour: number; perDay: number } {
+    const total = this.appRates.reduce((a, r) => a + r.total, 0);
+    const p = this.ratesPeriodSec || 60;
+    return {
+      total,
+      perMinute: total / (p / 60),
+      perHour:   total / (p / 3600),
+      perDay:    total / (p / 86400)
+    };
+  }
+
+  sharePct(r: AppRate): number {
+    const t = this.ratesTotal.total;
+    return t ? (r.total / t) * 100 : 0;
+  }
+
+  /** Click a row to filter the whole dashboard on that app (click again to clear). */
+  selectApp(app: string): void {
+    this.filterApp = this.filterApp === app ? '' : app;
+    this.applyFilters();
   }
 
   // ─────────────────────────────────────────────────────────────

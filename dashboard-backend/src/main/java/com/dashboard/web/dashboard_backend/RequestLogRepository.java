@@ -110,6 +110,21 @@ public interface RequestLogRepository extends MongoRepository<RequestLog, String
     })
     AuditStats getAuditStatsByApp(Date cutoff, String app);
 
+    // ── Request count per app (rates are computed in the controller) ──
+    // ?0 = cutoff Date for the selected time range. Busiest app first.
+    @Aggregation(pipeline = {
+        "{ $match: { parsed_at: { $gte: ?0 }, app: { $ne: null } } }",
+        "{ $group: { _id: '$app', total: { $sum: 1 } } }",
+        "{ $project: { _id: 0, app: '$_id', total: 1 } }",
+        "{ $sort: { total: -1, app: 1 } }"
+    })
+    List<AppRate> getAppRates(Date cutoff);
+
+    // Oldest log in the collection (use PageRequest.of(0, 1)) — tells the
+    // controller how much history really exists, to cap the averaging period.
+    @Query(value = "{ 'parsed_at': { $ne: null } }", sort = "{ 'parsed_at' : 1 }", fields = "{ 'parsed_at' : 1 }")
+    List<RequestLog> findOldest(Pageable pageable);
+
     // ── Distinct apps ────────────────────────────────────────────────────
 
     @Aggregation(pipeline = {

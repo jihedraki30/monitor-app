@@ -4,6 +4,7 @@ export interface AuditLog {
   _id?:          string;
   time:          string;
   ip:            string;
+  app?:          string;
   method:        string;
   uri:           string;
   status:        number;
@@ -39,4 +40,13 @@ export interface HourlyCount {
 export interface IpCount {
   ip: string;
   count: number
+}
+
+export interface AppRate {
+  app:       string;
+  total:     number;
+  periodSeconds: number;
+  perMinute: number;
+  perHour:   number;
+  perDay:    number;
 }

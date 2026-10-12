@@ -7,6 +7,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -128,6 +129,44 @@ public class AuditController {
             stats = new AuditStats();
         }
         return stats;
+    }
+
+    // ── Traffic rate per app ─────────────────────────────────────────────
+    //
+    // FIX: the old version divided each app by ITS OWN "first request -> now"
+    // period, so every row used a different denominator (rows were not comparable,
+    // the Total row added up rates measured over different periods, and a single
+    // fresh request was extrapolated to a huge per-day figure).
+    //
+    // Now ALL apps share the same period:
+    //   period = selected range, capped to the age of the oldest log in the DB
+    //            (a young database is not diluted by a 7d range it cannot fill),
+    //            floored at 60 s.
+    @GetMapping("/rates")
+    public List<AppRate> getAppRates(@RequestParam(defaultValue = "24h") String timeRange) {
+        long windowSec = toHours(timeRange) * 3600L;
+        List<AppRate> rates = repository.getAppRates(toCutoff(timeRange));
+
+        long period = windowSec;
+        List<RequestLog> oldest = repository.findOldest(PageRequest.of(0, 1));
+        if (!oldest.isEmpty() && oldest.get(0).getParsed_at() != null) {
+            long ageSec = Duration.between(oldest.get(0).getParsed_at().toInstant(), Instant.now()).getSeconds();
+            period = Math.min(windowSec, ageSec);
+        }
+        period = Math.max(60L, period);
+
+        for (AppRate r : rates) {
+            r.setPeriodSeconds(period);
+            r.setPerMinute(round(r.getTotal() / (period / 60.0),    3));
+            r.setPerHour  (round(r.getTotal() / (period / 3600.0),  2));
+            r.setPerDay   (round(r.getTotal() / (period / 86400.0), 2));
+        }
+        return rates;
+    }
+
+    private double round(double v, int decimals) {
+        double f = Math.pow(10, decimals);
+        return Math.round(v * f) / f;
     }
 
     // ── Top endpoints ────────────────────────────────────────────────────

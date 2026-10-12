@@ -867,3 +867,156 @@ $font-ui: 'Inter', system-ui, sans-serif;
     }
   }
 }
+
+// ─── Traffic rate per app ─────────────────────────────────────
+.card-rates { margin-bottom: 1.5rem; }
+
+.log-table.rates-table {
+  table-layout: fixed;          // columns no longer depend on content
+  width: 100%;
+  min-width: 720px;             // scrolls horizontally instead of squashing
+
+  // column widths
+  col.col-app   { width: 20%; }
+  col.col-share { width: 28%; }
+  col.col-num   { width: 13%; }
+
+  // same padding for header, body and footer cells
+  thead th,
+  tbody td,
+  tfoot td {
+    padding: 8px 14px;
+    vertical-align: middle;
+    box-sizing: border-box;
+  }
+
+  // numeric columns: header + values share the same right edge
+  thead th.num,
+  tbody td.num,
+  tfoot td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  tbody td.num,
+  tfoot td.num { font-family: $font; }
+
+  // the uppercase letter-spacing adds trailing space after the last
+  // letter, so pull right-aligned headers back to line up with the digits
+  thead th.num {
+    letter-spacing: 0.08em;
+    padding-right: calc(14px - 0.08em);
+  }
+
+  // text columns: left aligned
+  thead th.app-col,
+  thead th.share-col { text-align: left; }
+
+  // visual split between "volume" and "average rate" columns
+  th.rate-start,
+  td.rate-start { border-left: 1px solid $border; }
+
+  td.app-cell {
+    color: $text-primary;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tbody tr.clickable { cursor: pointer; }
+  tr.row-selected td { background: rgba(55, 138, 221, 0.10); }
+  tr.row-selected td.app-cell { box-shadow: inset 3px 0 0 $blue; }
+
+  // share-of-traffic bar (bar starts under the "Share" header text)
+  .share {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .share-track {
+    flex: 1;
+    min-width: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .share-fill {
+    height: 100%;
+    background: $blue;
+    opacity: 0.75;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  .share-pct {
+    flex: 0 0 48px;             // fixed width -> bars all have the same length
+    font-family: $font;
+    font-size: 11px;
+    color: $text-secondary;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // Total row pinned at the bottom of the scroll area
+  tfoot td {
+    position: sticky;
+    bottom: 0;
+    background: $bg-card-alt;
+    border-top: 1px solid $border-hi;
+    font-weight: 600;
+    color: $text-primary;
+  }
+}
+
+// ─── Endpoint hover tooltip ───────────────────────────────────
+.cell-uri { cursor: help; }
+
+.endpoint-tip {
+  position: fixed;
+  z-index: 1000;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  background: $bg-card-alt;
+  border: 1px solid $border-hi;
+  border-radius: $radius;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px;
+  font-size: 11px;
+  color: $text-primary;
+  pointer-events: none;   // avoids flicker when the cursor moves
+
+  &.tip-above { transform: translateY(-100%); }
+
+  .tip-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid $border;
+  }
+
+  .tip-uri {
+    font-family: $font;
+    word-break: break-all;
+  }
+
+  .tip-grid {
+    display: grid;
+    grid-template-columns: 82px 1fr;
+    gap: 4px 10px;
+    font-family: $font;
+
+    > span { word-break: break-all; }
+  }
+
+  .tip-k {
+    color: $text-muted;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .tip-ua { color: $text-secondary; }
+}

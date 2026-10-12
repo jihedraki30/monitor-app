@@ -9,7 +9,8 @@ import {
   AuditStats,
   EndpointCount,
   HourlyCount,
-  IpCount
+  IpCount,
+  AppRate
 } from '../models/audit-log.model';
 
 export interface PageResponse<T> {
@@ -83,6 +84,11 @@ export class AuditService {
       .set('timeRange', timeRange);
     if (app?.trim()) params = params.set('app', app);
     return this.http.get<IpCount[]>(`${this.BASE}/top-ips`, { params });
+  }
+
+  getAppRates(timeRange = '24h'): Observable<AppRate[]> {
+    const params = new HttpParams().set('timeRange', timeRange);
+    return this.http.get<AppRate[]>(`${this.BASE}/rates`, { params });
   }
 
   deleteHistory(range: DeleteRange): Observable<DeleteHistoryResponse> {

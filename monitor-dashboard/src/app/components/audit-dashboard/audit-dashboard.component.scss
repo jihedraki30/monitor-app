@@ -169,6 +169,36 @@ $font-ui: 'Inter', system-ui, sans-serif;
   option { background: #1a2035; }
 }
 
+.ctrl-input {
+  background: $bg-card;
+  border: 1px solid $border-hi;
+  color: $text-primary;
+  font-size: 12px;
+  font-family: $font-ui;
+  padding: 5px 10px;
+  border-radius: $radius;
+  color-scheme: dark;           // dark native date/time picker
+
+  &:focus { outline: none; border-color: $blue; }
+  &::placeholder { color: $text-muted; }
+  &.ctrl-user { width: 170px; }
+}
+
+.btn-clear-dates {
+  background: transparent;
+  border: 1px solid $border-hi;
+  color: $text-secondary;
+  font-size: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius;
+  cursor: pointer;
+  align-self: flex-end;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover { color: $text-primary; border-color: $blue; }
+}
+
 .btn-refresh {
   background: transparent;
   border: 1px solid $border-hi;
@@ -874,12 +904,12 @@ $font-ui: 'Inter', system-ui, sans-serif;
 .log-table.rates-table {
   table-layout: fixed;          // columns no longer depend on content
   width: 100%;
-  min-width: 720px;             // scrolls horizontally instead of squashing
+  min-width: 880px;             // scrolls horizontally instead of squashing
 
   // column widths
-  col.col-app   { width: 20%; }
-  col.col-share { width: 28%; }
-  col.col-num   { width: 13%; }
+  col.col-app   { width: 15%; }
+  col.col-share { width: 19%; }
+  col.col-num   { width: 11%; }
 
   // same padding for header, body and footer cells
   thead th,

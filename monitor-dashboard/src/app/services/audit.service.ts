@@ -28,6 +28,13 @@ export interface DeleteHistoryResponse {
   range:   string;
 }
 
+/** Optional filters sent with every query (user + date-time window, ISO-8601 UTC). */
+export interface ExtraFilters {
+  user?: string;
+  from?: string;
+  to?:   string;
+}
+
 export type DeleteRange = 'last_day' | 'last_week' | 'last_month' | 'all';
 
 @Injectable({ providedIn: 'root' })
@@ -36,6 +43,13 @@ export class AuditService {
   private readonly BASE = `${environment.apiBaseUrl}/audit`;
 
   constructor(private http: HttpClient) {}
+
+  private withExtra(params: HttpParams, e: ExtraFilters = {}): HttpParams {
+    if (e.user?.trim()) params = params.set('user', e.user.trim());
+    if (e.from)         params = params.set('from', e.from);
+    if (e.to)           params = params.set('to',   e.to);
+    return params;
+  }
 
   getApps(): Observable<string[]> {
     return this.http.get<string[]>(`${this.BASE}/apps`);
@@ -46,7 +60,8 @@ export class AuditService {
     statusGroup?: string,
     app?:         string,
     page   = 0,
-    size   = 20
+    size   = 20,
+    extra: ExtraFilters = {}
   ): Observable<PageResponse<AuditLog>> {
 
     let params = new HttpParams()
@@ -56,38 +71,43 @@ export class AuditService {
     if (method?.trim())      params = params.set('method', method);
     if (statusGroup?.trim()) params = params.set('status', statusGroup);
     if (app?.trim())         params = params.set('app',    app);
+    params = this.withExtra(params, extra);
 
     return this.http.get<PageResponse<AuditLog>>(`${this.BASE}/logs`, { params });
   }
 
-  getStats(app?: string, timeRange = '24h'): Observable<AuditStats> {
+  getStats(app?: string, timeRange = '24h', extra: ExtraFilters = {}): Observable<AuditStats> {
     let params = new HttpParams().set('timeRange', timeRange);
     if (app?.trim()) params = params.set('app', app);
+    params = this.withExtra(params, extra);
     return this.http.get<AuditStats>(`${this.BASE}/stats`, { params });
   }
 
-  getTopEndpoints(limit = 8, app?: string): Observable<EndpointCount[]> {
+  getTopEndpoints(limit = 8, app?: string, extra: ExtraFilters = {}): Observable<EndpointCount[]> {
     let params = new HttpParams().set('limit', limit.toString());
     if (app?.trim()) params = params.set('app', app);
+    params = this.withExtra(params, extra);
     return this.http.get<EndpointCount[]>(`${this.BASE}/endpoints`, { params });
   }
 
-  getHourlyTimeline(timeRange = '24h', app?: string): Observable<HourlyCount[]> {
+  getHourlyTimeline(timeRange = '24h', app?: string, extra: ExtraFilters = {}): Observable<HourlyCount[]> {
     let params = new HttpParams().set('timeRange', timeRange);
     if (app?.trim()) params = params.set('app', app);
+    params = this.withExtra(params, extra);
     return this.http.get<HourlyCount[]>(`${this.BASE}/timeline`, { params });
   }
 
-  getTopIps(limit = 8, timeRange = '24h', app?: string): Observable<IpCount[]> {
+  getTopIps(limit = 8, timeRange = '24h', app?: string, extra: ExtraFilters = {}): Observable<IpCount[]> {
     let params = new HttpParams()
       .set('limit', limit.toString())
       .set('timeRange', timeRange);
     if (app?.trim()) params = params.set('app', app);
+    params = this.withExtra(params, extra);
     return this.http.get<IpCount[]>(`${this.BASE}/top-ips`, { params });
   }
 
-  getAppRates(timeRange = '24h'): Observable<AppRate[]> {
-    const params = new HttpParams().set('timeRange', timeRange);
+  getAppRates(timeRange = '24h', extra: ExtraFilters = {}): Observable<AppRate[]> {
+    const params = this.withExtra(new HttpParams().set('timeRange', timeRange), extra);
     return this.http.get<AppRate[]>(`${this.BASE}/rates`, { params });
   }
 

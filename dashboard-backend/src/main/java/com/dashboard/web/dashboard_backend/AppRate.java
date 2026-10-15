@@ -2,11 +2,13 @@ package com.dashboard.web.dashboard_backend;
 
 public class AppRate {
     private String app;
-    private long   total;       // requests in the selected time range
+    private long   total;         // requests in the selected time range
     private long   periodSeconds; // averaging period, identical for every app (range capped to the age of the data)
-    private double perMinute;   // average requests per minute over the range
-    private double perHour;     // average requests per hour over the range
-    private double perDay;      // average requests per day over the range
+    private double perMinute;     // average requests per minute over the range
+    private double perHour;       // average requests per hour over the range
+    private double perDay;        // average requests per day over the range
+    private long   uniqueIps;     // distinct client IPs seen for this app in the range
+    private double perMinutePerIp;// average requests per minute made by ONE ip (perMinute / uniqueIps)
 
     public String getApp()                 { return app; }
     public void setApp(String app)         { this.app = app; }
@@ -20,4 +22,8 @@ public class AppRate {
     public void setPerHour(double v)       { this.perHour = v; }
     public double getPerDay()              { return perDay; }
     public void setPerDay(double v)        { this.perDay = v; }
+    public long getUniqueIps()             { return uniqueIps; }
+    public void setUniqueIps(long v)       { this.uniqueIps = v; }
+    public double getPerMinutePerIp()      { return perMinutePerIp; }
+    public void setPerMinutePerIp(double v){ this.perMinutePerIp = v; }
 }

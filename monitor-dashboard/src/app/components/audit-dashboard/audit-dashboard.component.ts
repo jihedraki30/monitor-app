@@ -28,7 +28,7 @@ import {
   Legend
 } from 'chart.js';
 
-import { AuditService, PageResponse, DeleteRange } from '../../services/audit.service';
+import { AuditService, PageResponse, DeleteRange, ExtraFilters } from '../../services/audit.service';
 import {
   AuditLog,
   AuditStats,
@@ -66,6 +66,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   topIps:    IpCount[]       = [];           // ← new
   username:  string          = '';
   appRates:  AppRate[]       = [];
+  ratesError = '';            // shown in the rates table if /rates fails
 
   // Endpoint hover tooltip
   hoveredLog: AuditLog | null = null;
@@ -90,6 +91,9 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   filterMethod = '';
   filterStatus = '';
   filterApp    = '';
+  filterUser   = '';
+  filterFrom   = '';   // <input type="datetime-local"> value (local time); '' = not set
+  filterTo     = '';
   timeRange    = '24h';
 
   loading             = false;
@@ -112,6 +116,7 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   private statusChart?:   Chart<'doughnut'>;
   private topIpsChart?:   Chart<'bar'>;        // ← replaces roleChart
   private timelineChart?: Chart<'bar'>;
+  private topIpsSorted:   IpCount[] = [];   // same order as the bars (used by the tooltip)
   private chartsReady     = false;
   private refreshTimer?:  ReturnType<typeof setInterval>;
   private clockTimer?:    ReturnType<typeof setInterval>;
@@ -190,13 +195,14 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
 
   load(): void {
     this.loading = true;
+    const extra = this.extraFilters;
 
     if (this.currentPage >= this.totalPages && this.totalPages > 0) {
       this.currentPage = this.totalPages - 1;
     }
 
     // Stats — now correctly scoped to timeRange + app
-    this.auditService.getStats(this.filterApp, this.timeRange).subscribe({
+    this.auditService.getStats(this.filterApp, this.timeRange, extra).subscribe({
       next:  s  => (this.stats = s),
       error: err => console.warn('Stats load failed', err)
     });
@@ -206,7 +212,8 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       this.filterStatus,
       this.filterApp,
       this.currentPage,
-      this.pageSize
+      this.pageSize,
+      extra
     ).subscribe({
       next: (response: PageResponse<AuditLog>) => {
         this.logs          = response.content       || [];
@@ -225,21 +232,25 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       }
     });
 
-    this.auditService.getTopEndpoints(8, this.filterApp).subscribe(e => this.endpoints = e || []);
+    this.auditService.getTopEndpoints(8, this.filterApp, extra).subscribe(e => this.endpoints = e || []);
 
-    this.auditService.getHourlyTimeline(this.timeRange, this.filterApp).subscribe(t => {
+    this.auditService.getHourlyTimeline(this.timeRange, this.filterApp, extra).subscribe(t => {
       this.timeline = t || [];
       if (this.chartsReady) this.updateTimelineChart();
     });
 
     // Average traffic per app (per minute / hour / day) over the selected range
-    this.auditService.getAppRates(this.timeRange).subscribe({
-      next:  r   => (this.appRates = r || []),
-      error: err => console.warn('Rates load failed', err)
+    this.auditService.getAppRates(this.timeRange, extra).subscribe({
+      next:  r   => { this.appRates = r || []; this.ratesError = ''; },
+      error: err => {
+        console.warn('Rates load failed', err);
+        this.appRates   = [];
+        this.ratesError = `Rates failed (HTTP ${err?.status ?? '?'}): ${err?.error?.message || err?.error?.error || err?.message || 'unknown error'}`;
+      }
     });
 
     // Load top IPs (respects timeRange + app filter)
-    this.auditService.getTopIps(8, this.timeRange, this.filterApp).subscribe(ips => {
+    this.auditService.getTopIps(8, this.timeRange, this.filterApp, extra).subscribe(ips => {
       this.topIps = ips || [];
       if (this.chartsReady) this.updateTopIpsChart();
     });
@@ -316,6 +327,53 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   onPageSizeChange(): void  { this.currentPage = 0; this.load(); }
   applyFilters(): void      { this.currentPage = 0; this.load(); }
   onTimeRangeChange(): void { this.currentPage = 0; this.load(); }
+
+  /** Preset range button: also drops any custom date-time window. */
+  selectRange(r: string): void {
+    this.timeRange  = r;
+    this.filterFrom = '';
+    this.filterTo   = '';
+    this.onTimeRangeChange();
+  }
+
+  clearDates(): void {
+    this.filterFrom = '';
+    this.filterTo   = '';
+    this.applyFilters();
+  }
+
+  get customRange(): boolean {
+    return !!(this.filterFrom || this.filterTo);
+  }
+
+  /** Text shown in the card headers: preset (24h) or the custom window. */
+  get rangeLabel(): string {
+    if (!this.customRange) return this.timeRange;
+    const f = (v: string, fallback: string) => v ? v.replace('T', ' ') : fallback;
+    return `${f(this.filterFrom, 'start')} → ${f(this.filterTo, 'now')}`;
+  }
+
+  /** User + date-time window sent to the API (local inputs → ISO UTC). */
+  private get extraFilters(): ExtraFilters {
+    return {
+      user: (this.filterUser || '').trim() || undefined,
+      from: this.toIso(this.filterFrom, false),
+      to:   this.toIso(this.filterTo,   true)
+    };
+  }
+
+  /** `to` is inclusive of the whole minute picked (HH:MM:59.999). */
+  private toIso(v: string, endOfMinute: boolean): string | undefined {
+    if (!v) return undefined;
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return undefined;
+    return new Date(d.getTime() + (endOfMinute ? 59_999 : 0)).toISOString();
+  }
+
+  fmtRate(v: number | null | undefined): string {
+    const n = v ?? 0;
+    return n.toFixed(n > 0 && n < 0.1 ? 3 : 2);
+  }
 
   // ─────────────────────────────────────────────────────────────
   // DELETE HISTORY
@@ -411,7 +469,14 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ` ${ctx.parsed.x} request${ctx.parsed.x === 1 ? '' : 's'}`
+              title: items => this.topIpsSorted[items[0].dataIndex]?.ip ?? '',
+              label: ctx => {
+                const ip = this.topIpsSorted[ctx.dataIndex];
+                return [
+                  ` ${ctx.parsed.x} request${ctx.parsed.x === 1 ? '' : 's'}`,
+                  ` avg ${this.fmtRate(ip?.perMinute)} / min`
+                ];
+              }
             }
           }
         },
@@ -484,7 +549,8 @@ export class AuditDashboardComponent implements OnInit, OnDestroy, AfterViewInit
     if (!this.topIpsChart) return;
     // Show IPs in descending order on a horizontal bar (highest count at top)
     const sorted = [...this.topIps].sort((a, b) => a.count - b.count); // Chart.js renders bottom-up
-    this.topIpsChart.data.labels           = sorted.map(ip => ip.ip);
+    this.topIpsSorted                      = sorted;
+    this.topIpsChart.data.labels           = sorted.map(ip => `${ip.ip}  ·  ${this.fmtRate(ip.perMinute)}/min`);
     this.topIpsChart.data.datasets[0].data = sorted.map(ip => ip.count);
     this.topIpsChart.update();
   }

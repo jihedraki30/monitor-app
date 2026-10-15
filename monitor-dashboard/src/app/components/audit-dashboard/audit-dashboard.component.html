@@ -20,10 +20,25 @@
         <div class="btn-group">
           <button *ngFor="let r of ['1h','6h','24h','7d']"
                   class="btn-range"
-                  [class.active]="timeRange === r"
-                  (click)="timeRange = r; onTimeRangeChange()">{{ r }}</button>
+                  [class.active]="!customRange && timeRange === r"
+                  (click)="selectRange(r)">{{ r }}</button>
         </div>
       </div>
+
+      <div class="control-group">
+        <label class="control-label">From</label>
+        <input type="datetime-local" class="ctrl-input"
+               [(ngModel)]="filterFrom" [max]="filterTo || null" (change)="applyFilters()">
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">To</label>
+        <input type="datetime-local" class="ctrl-input"
+               [(ngModel)]="filterTo" [min]="filterFrom || null" (change)="applyFilters()">
+      </div>
+
+      <button class="btn-clear-dates" *ngIf="customRange" (click)="clearDates()"
+              title="Clear date/time filter">✕</button>
 
       <div class="control-group">
         <label class="control-label">App</label>
@@ -31,6 +46,12 @@
           <option value="">All apps</option>
           <option *ngFor="let app of availableApps" [value]="app">{{ appLabel(app) }}</option>
         </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">User</label>
+        <input type="text" class="ctrl-input ctrl-user" placeholder="email contains…"
+               [(ngModel)]="filterUser" (change)="applyFilters()">
       </div>
 
       <div class="control-group">
@@ -129,7 +150,7 @@
     <div class="card-head">
       <span class="card-title">Average traffic per app</span>
       <span class="card-meta">
-        range {{ timeRange }} &nbsp;·&nbsp; averaged over {{ ratesPeriodLabel }} &nbsp;·&nbsp; click a row to filter
+        range {{ rangeLabel }} &nbsp;·&nbsp; averaged over {{ ratesPeriodLabel }} &nbsp;·&nbsp; click a row to filter
       </span>
     </div>
     <div class="table-scroll">
@@ -138,6 +159,8 @@
           <col class="col-app">
           <col class="col-num">
           <col class="col-share">
+          <col class="col-num">
+          <col class="col-num">
           <col class="col-num">
           <col class="col-num">
           <col class="col-num">
@@ -150,6 +173,8 @@
             <th class="num rate-start">Avg / min</th>
             <th class="num">Avg / hour</th>
             <th class="num">Avg / day</th>
+            <th class="num rate-start">IPs</th>
+            <th class="num">Avg / min / IP</th>
           </tr>
         </thead>
         <tbody>
@@ -168,9 +193,11 @@
             <td class="num rate-start">{{ r.perMinute | number:'1.2-2' }}</td>
             <td class="num">{{ r.perHour | number:'1.1-1' }}</td>
             <td class="num">{{ r.perDay | number:'1.0-0' }}</td>
+            <td class="num rate-start">{{ r.uniqueIps | number }}</td>
+            <td class="num">{{ fmtRate(r.perMinutePerIp) }}</td>
           </tr>
           <tr *ngIf="!appRates.length">
-            <td colspan="6" class="empty-row">No traffic in this range</td>
+            <td colspan="8" class="empty-row">{{ ratesError || 'No traffic in this range' }}</td>
           </tr>
         </tbody>
         <tfoot *ngIf="appRates.length > 1">
@@ -181,6 +208,8 @@
             <td class="num rate-start">{{ ratesTotal.perMinute | number:'1.2-2' }}</td>
             <td class="num">{{ ratesTotal.perHour | number:'1.1-1' }}</td>
             <td class="num">{{ ratesTotal.perDay | number:'1.0-0' }}</td>
+            <td class="num rate-start">—</td>
+            <td class="num">—</td>
           </tr>
         </tfoot>
       </table>
@@ -191,7 +220,7 @@
   <section class="card card-timeline">
     <div class="card-head">
       <span class="card-title">Request volume</span>
-      <span class="card-meta">{{ timeRange }} · hourly</span>
+      <span class="card-meta">{{ rangeLabel }}</span>
     </div>
     <div class="chart-wrap-tall">
       <canvas #timelineBar role="img" aria-label="Bar chart showing request volume over time">No timeline data.</canvas>
@@ -313,7 +342,7 @@
     <section class="card card-chart">
       <div class="card-head">
         <span class="card-title">Top IPs</span>
-        <span class="card-meta">by request count</span>
+        <span class="card-meta">by request count &nbsp;·&nbsp; avg requests / min per IP</span>
       </div>
       <div class="chart-wrap-sm">
         <canvas #topIpsBar role="img" aria-label="Bar chart showing top IP addresses by request count">No data.</canvas>

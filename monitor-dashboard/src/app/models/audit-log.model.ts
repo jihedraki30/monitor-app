@@ -39,7 +39,8 @@ export interface HourlyCount {
 }
 export interface IpCount {
   ip: string;
-  count: number
+  count: number;
+  perMinute: number;        // avg requests / minute from this IP
 }
 
 export interface AppRate {
@@ -49,4 +50,6 @@ export interface AppRate {
   perMinute: number;
   perHour:   number;
   perDay:    number;
+  uniqueIps:      number;   // distinct IPs seen for this app
+  perMinutePerIp: number;   // avg requests / minute made by ONE IP
 }

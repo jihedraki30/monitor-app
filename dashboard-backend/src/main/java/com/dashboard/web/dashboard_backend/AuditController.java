@@ -179,8 +179,8 @@ public class AuditController {
     // All apps share the same period (see periodSeconds). The app filter is NOT
     // applied here so the table keeps listing every app; user + window are.
     //
-    // perMinutePerIp = average requests/minute made by ONE ip of that app
-    //                = total / uniqueIps / (period in minutes)
+    // perDayPerIp = average requests/day made by ONE ip of that app
+    //             = total / uniqueIps / (period in days)
     @GetMapping("/rates")
     public List<AppRate> getAppRates(
             @RequestParam(defaultValue = "24h") String timeRange,
@@ -197,8 +197,8 @@ public class AuditController {
             r.setPerMinute(round(r.getTotal() / (period / 60.0),    3));
             r.setPerHour  (round(r.getTotal() / (period / 3600.0),  2));
             r.setPerDay   (round(r.getTotal() / (period / 86400.0), 2));
-            r.setPerMinutePerIp(r.getUniqueIps() > 0
-                    ? round(r.getTotal() / (double) r.getUniqueIps() / (period / 60.0), 3)
+            r.setPerDayPerIp(r.getUniqueIps() > 0
+                    ? round(r.getTotal() / (double) r.getUniqueIps() / (period / 86400.0), 2)
                     : 0);
         }
         return rates;

@@ -174,7 +174,7 @@
             <th class="num">Avg / hour</th>
             <th class="num">Avg / day</th>
             <th class="num rate-start">IPs</th>
-            <th class="num">Avg / min / IP</th>
+            <th class="num">Avg / day / IP</th>
           </tr>
         </thead>
         <tbody>
@@ -194,7 +194,7 @@
             <td class="num">{{ r.perHour | number:'1.1-1' }}</td>
             <td class="num">{{ r.perDay | number:'1.0-0' }}</td>
             <td class="num rate-start">{{ r.uniqueIps | number }}</td>
-            <td class="num">{{ fmtRate(r.perMinutePerIp) }}</td>
+            <td class="num">{{ r.perDayPerIp | number:'1.1-1' }}</td>
           </tr>
           <tr *ngIf="!appRates.length">
             <td colspan="8" class="empty-row">{{ ratesError || 'No traffic in this range' }}</td>

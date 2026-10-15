@@ -8,7 +8,7 @@ public class AppRate {
     private double perHour;       // average requests per hour over the range
     private double perDay;        // average requests per day over the range
     private long   uniqueIps;     // distinct client IPs seen for this app in the range
-    private double perMinutePerIp;// average requests per minute made by ONE ip (perMinute / uniqueIps)
+    private double perDayPerIp;   // average requests per day made by ONE ip (perDay / uniqueIps)
 
     public String getApp()                 { return app; }
     public void setApp(String app)         { this.app = app; }
@@ -24,6 +24,6 @@ public class AppRate {
     public void setPerDay(double v)        { this.perDay = v; }
     public long getUniqueIps()             { return uniqueIps; }
     public void setUniqueIps(long v)       { this.uniqueIps = v; }
-    public double getPerMinutePerIp()      { return perMinutePerIp; }
-    public void setPerMinutePerIp(double v){ this.perMinutePerIp = v; }
+    public double getPerDayPerIp()         { return perDayPerIp; }
+    public void setPerDayPerIp(double v)   { this.perDayPerIp = v; }
 }

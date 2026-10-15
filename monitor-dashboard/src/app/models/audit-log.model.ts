@@ -51,5 +51,5 @@ export interface AppRate {
   perHour:   number;
   perDay:    number;
   uniqueIps:      number;   // distinct IPs seen for this app
-  perMinutePerIp: number;   // avg requests / minute made by ONE IP
+  perDayPerIp:    number;   // avg requests / day made by ONE IP
 }
